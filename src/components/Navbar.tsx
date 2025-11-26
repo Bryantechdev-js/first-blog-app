@@ -24,7 +24,7 @@ function Navbar() {
 
     }
   return (
-    <nav className='w-full h-25 shadow flex  justify-between items-center px-5 py-5 relative'>
+    <nav className='w-full h-25 shadow flex  justify-between items-center px-5 py-5 relative -z-50'>
         <div className="nav-brand">Logo</div>
         <ul className={`nav-menu w-full h-auto sm:justify-center   ${toggle ? "hidden" : "block"} flex-col sm:flex-row    gap-3 sm:gap-10 absolute -bottom-full px-5 sm:inline-flex  left-0 sm:top-[37%] bg-gray-200 py-5 sm:py-0`}>
             <Link href="/">
