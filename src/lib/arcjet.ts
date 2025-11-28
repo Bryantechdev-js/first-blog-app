@@ -1,26 +1,17 @@
-// import arcjet,{protectSignup, tokenBucket } from "@arcjet/next";
+
+import arcjet,{protectSignup, tokenBucket } from "@arcjet/next";
 
 
-// const aj = arcjet({
-//   key: process.env.ARCJET_KEY!, // Get your site key from https://app.arcjet.com
-//   rules: [
-//     protectSignup({
-//           mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
-//       // block disposable, invalid, and email addresses with no MX records
-//       deny: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"],
-//     }),
-//     bots: {
-//       mode:"LIVE", // will block requests. Use "DRY_RUN" to log only,
-//       allow: []
-//     },
-//     rateLimit: {
-//       mode:"LIVE" // will block requests. Use "DRY_RUN" to log only,
-//     ,
-//       interval: "1m", // time window in seconds,
-//       max:2, // max requests allowed in the time window
-//     }
-//   ]
+const aj = arcjet({
+  key: process.env.ARCJET_KEY!, // Get your site key from https://app.arcjet.com
+ rules: [
+  protectSignup({ 
+    email: { mode: "LIVE", block: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"] },
+    bots: { mode: "LIVE", allow: [] },
+    rateLimit: { mode: "LIVE", interval: "1m", max: 50 },
+  }),
+],
 
-// });
+});
 
-// export default aj;
+export default aj;

@@ -7,6 +7,9 @@ import { Button } from "../ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+// import loginUserFormAction from "@/actions/login"; // your server action
+import { toast } from "sonner";
+import loginUserFormAction from "@/actions/loginUserFormAction";
 
 const loginFormValidation = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -29,11 +32,36 @@ export default function LoginForm() {
     resolver: zodResolver(loginFormValidation),
   });
 
-  const onSubmit = (data: LoginFormData) => {
+  // Make onSubmit async
+  const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
-    console.log("Login data:", data);
-    // Mock async login
-    setTimeout(() => setLoading(false), 2000);
+
+    try {
+      const formData = new FormData();
+      formData.append("email", data.email);
+      formData.append("password", data.password);
+
+      const result = await loginUserFormAction(formData);
+
+      console.log("Login result:", result);
+
+      if (result?.success) {
+        toast.success("Login successful!", {
+          description: "Welcome back!",
+        });
+      } else {
+        toast.error("Login failed", {
+          description: result?.error || "Something went wrong",
+        });
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Login failed", {
+        description: err.message || "Something went wrong",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,9 +78,7 @@ export default function LoginForm() {
             type="email"
             placeholder="Email"
             disabled={loading}
-            className={`pl-10 ${
-              errors.email ? "border-red-500" : "focus:border-gray-400"
-            }`}
+            className={`pl-10 ${errors.email ? "border-red-500" : "focus:border-gray-400"}`}
             {...register("email")}
           />
           {errors.email && (
@@ -67,19 +93,14 @@ export default function LoginForm() {
             type="password"
             placeholder="Enter your password"
             disabled={loading}
-            className={`pl-10 ${
-              errors.password ? "border-red-500" : "focus:border-gray-400"
-            }`}
+            className={`pl-10 ${errors.password ? "border-red-500" : "focus:border-gray-400"}`}
             {...register("password")}
           />
           {errors.password && (
-            <p className="text-sm text-red-500 mt-1">
-              {errors.password.message}
-            </p>
+            <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
           )}
         </div>
 
-        {/* Submit Button */}
         <Button
           type="submit"
           disabled={loading}

@@ -4,7 +4,7 @@ export default function Home() {
   
   return (
    <main>
-      <h1 className="text-2xl">hi bryan tech</h1>
+      <h1 className="text-2xl">Welcome to blogy</h1>
    </main>
   );
 }

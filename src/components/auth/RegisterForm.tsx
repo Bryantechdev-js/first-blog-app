@@ -3,12 +3,14 @@
 import { Lock, Mail, User } from "lucide-react";
 import React from "react";
 import { Input } from "../ui/input";
-import { email, z } from "zod";
+import { z } from "zod";
 import { Button } from "../ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { registerUserAction } from "@/actions/register";
+import { toast } from "sonner"; // Use toast functions only, Toaster is already in layout
 
-export const registerFormValidation = z.object({
+const registerFormValidation = z.object({
   name: z
     .string()
     .min(5, { message: "Name must be at least 5 characters long" })
@@ -24,18 +26,47 @@ type RegisterFormData = z.infer<typeof registerFormValidation>;
 
 export default function RegisterForm() {
   const [loading, setLoading] = React.useState(false);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
+    reset, // <-- to reset form on success
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerFormValidation),
   });
 
-  const onSubmit = (data: RegisterFormData) => {
+  const onSubmit = async (data: RegisterFormData) => {
     setLoading(true);
-    console.log("Form Submitted:", data);
-    setTimeout(() => setLoading(false), 2000); // Mock async submit
+
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+
+    try {
+      const result = await registerUserAction(formData);
+
+      console.log("Server action result:", result);
+
+      if (result?.success) {
+        toast.success("Registration successful!", {
+          description: result.message || "Welcome aboard!",
+        });
+        reset(); // clear form
+      } else {
+        toast.error("Registration failed", {
+          description: result?.error || "Something went wrong",
+        });
+      }
+    } catch (err: any) {
+      console.error("Error during registration:", err);
+      toast.error("Registration failed", {
+        description: err.message || "Something went wrong",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -98,7 +129,6 @@ export default function RegisterForm() {
           )}
         </div>
 
-        {/* Submit Button */}
         <Button
           type="submit"
           disabled={loading}
