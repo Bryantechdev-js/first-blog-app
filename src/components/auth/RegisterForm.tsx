@@ -7,8 +7,8 @@ import { z } from "zod";
 import { Button } from "../ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registerUserAction } from "@/actions/register";
-import { toast } from "sonner"; // Use toast functions only, Toaster is already in layout
+import  registerUserAction  from "@/actions/register";
+import { toast } from "sonner";
 
 const registerFormValidation = z.object({
   name: z
@@ -27,12 +27,7 @@ type RegisterFormData = z.infer<typeof registerFormValidation>;
 export default function RegisterForm() {
   const [loading, setLoading] = React.useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset, // <-- to reset form on success
-  } = useForm<RegisterFormData>({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<RegisterFormData>({
     resolver: zodResolver(registerFormValidation),
   });
 
@@ -46,23 +41,24 @@ export default function RegisterForm() {
 
     try {
       const result = await registerUserAction(formData);
-
       console.log("Server action result:", result);
 
       if (result?.success) {
+        // ✅ Use result.message for success
         toast.success("Registration successful!", {
-          description: result.message || "Welcome aboard!",
+          description: result?.message || "Welcome aboard!",
         });
         reset(); // clear form
       } else {
+        // ✅ Use result.error for failure
         toast.error("Registration failed", {
           description: result?.error || "Something went wrong",
         });
       }
-    } catch (err: any) {
+    } catch (err:any) {
       console.error("Error during registration:", err);
       toast.error("Registration failed", {
-        description: err.message || "Something went wrong",
+        description: err?.message || "Something went wrong",
       });
     } finally {
       setLoading(false);
@@ -71,9 +67,7 @@ export default function RegisterForm() {
 
   return (
     <div className="max-w-md mx-auto p-6 bg-white shadow-lg rounded-xl sm:p-10">
-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-        Create an Account
-      </h2>
+      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Create an Account</h2>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Name */}
@@ -83,14 +77,10 @@ export default function RegisterForm() {
             type="text"
             placeholder="Enter your name"
             disabled={loading}
-            className={`pl-10 ${
-              errors.name ? "border-red-500" : "focus:border-gray-400"
-            }`}
+            className={`pl-10 ${errors.name ? "border-red-500" : "focus:border-gray-400"}`}
             {...register("name")}
           />
-          {errors.name && (
-            <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
-          )}
+          {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>}
         </div>
 
         {/* Email */}
@@ -100,14 +90,10 @@ export default function RegisterForm() {
             type="email"
             placeholder="Email"
             disabled={loading}
-            className={`pl-10 ${
-              errors.email ? "border-red-500" : "focus:border-gray-400"
-            }`}
+            className={`pl-10 ${errors.email ? "border-red-500" : "focus:border-gray-400"}`}
             {...register("email")}
           />
-          {errors.email && (
-            <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
         </div>
 
         {/* Password */}
@@ -117,16 +103,10 @@ export default function RegisterForm() {
             type="password"
             placeholder="Enter your password"
             disabled={loading}
-            className={`pl-10 ${
-              errors.password ? "border-red-500" : "focus:border-gray-400"
-            }`}
+            className={`pl-10 ${errors.password ? "border-red-500" : "focus:border-gray-400"}`}
             {...register("password")}
           />
-          {errors.password && (
-            <p className="text-sm text-red-500 mt-1">
-              {errors.password.message}
-            </p>
-          )}
+          {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
         </div>
 
         <Button
