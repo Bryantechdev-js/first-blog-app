@@ -10,6 +10,7 @@ import { z } from "zod";
 // import loginUserFormAction from "@/actions/login"; // your server action
 import { toast } from "sonner";
 import loginUserFormAction from "@/actions/loginUserFormAction";
+import { useRouter } from "next/navigation";
 
 const loginFormValidation = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -22,18 +23,27 @@ const loginFormValidation = z.object({
 type LoginFormData = z.infer<typeof loginFormValidation>;
 
 export default function LoginForm() {
+  const router = useRouter();
   const [loading, setLoading] = React.useState(false);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors },reset
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginFormValidation),
   });
 
   // Make onSubmit async
   const onSubmit = async (data: LoginFormData) => {
+    // checking if the user is online 
+    const Online = navigator.onLine;
+    if(!Online){
+      toast.error("Network status",{
+        description: "it seems like you are offline please check your internet connection and try again",
+      })
+      return;
+    }
     setLoading(true);
 
     try {
@@ -45,14 +55,16 @@ export default function LoginForm() {
 
       console.log("Login result:", result);
 
-      if (result?.success) {
+      if (!result?.success) {
+           toast.error("Login failed", {
+           description: result?.error || "Something went wrong",
+        });
+      } else {
         toast.success("Login successful!", {
           description: "Welcome back!",
         });
-      } else {
-        toast.error("Login failed", {
-          description: result?.error || "Something went wrong",
-        });
+        reset();
+        router.push("/"); // Redirect to home
       }
     } catch (err: any) {
       console.error(err);

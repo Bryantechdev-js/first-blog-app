@@ -1,8 +1,13 @@
 "use server";
 
 import aj from "@/lib/arcjet";
+import connectToDatabase from "@/lib/db";
+import User from "@/models/User";
 import { request } from "@arcjet/next";
-import { z } from "zod";
+import bcrypt from "bcryptjs";
+import { error } from "console";
+// import { redirect } from "next/navigation";
+import { success, z } from "zod";
 
 const loginFormValidation = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -28,7 +33,7 @@ const loginUserFormAction = async (formData: FormData) => {
     };
   }
 
-  const { email } = parsed.data;
+  const { email,password } = parsed.data;
 
   if (!email) {
     return {
@@ -65,13 +70,32 @@ const loginUserFormAction = async (formData: FormData) => {
         status: 403,
       };
     }
+    // connection to my database 
+    await connectToDatabase()
 
-    // Everything passed ✅
-    return {
-      success: true,
-      message: "Login successful",
-      status: 200,
-    };
+    // git user with the same email from the database 
+    const user = await User.findOne({email: email}).select("+password") ?? true;
+    if (!user ) {
+      return {
+        success:false,
+        error: "your don't have an account yet or verify your info. Get register first",
+        status:400,
+      }
+    }
+
+    const ispasswordMatch = bcrypt.compare(password, user.password)
+    if (!ispasswordMatch) {
+      return {
+        success:false,
+        error:"login failed",
+        status:400
+      }
+    }
+    return{
+      success:true,
+      error:"Login successful",
+      status:200,
+    }
   } catch (err: any) {
     console.error("Arcjet login error:", err);
     return {

@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import  registerUserAction  from "@/actions/register";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const registerFormValidation = z.object({
   name: z
@@ -30,8 +31,14 @@ export default function RegisterForm() {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<RegisterFormData>({
     resolver: zodResolver(registerFormValidation),
   });
+  const router = useRouter();
 
   const onSubmit = async (data: RegisterFormData) => {
+      if (!navigator.onLine) {
+        toast.error("Network status",{description:"You are currently offline. Please check your internet connection."});
+        return;
+     }
+
     setLoading(true);
 
     const formData = new FormData();
@@ -43,16 +50,17 @@ export default function RegisterForm() {
       const result = await registerUserAction(formData);
       console.log("Server action result:", result);
 
-      if (result?.success) {
+      if (!result?.success) {
         // ✅ Use result.message for success
-        toast.success("Registration successful!", {
-          description: result?.message || "Welcome aboard!",
-        });
-        reset(); // clear form
-      } else {
-        // ✅ Use result.error for failure
         toast.error("Registration failed", {
           description: result?.error || "Something went wrong",
+        });
+        reset(); // clear form
+        router.push("/login");
+      } else {
+        // ✅ Use result.error for failure
+        toast.success("Registration successful!", {
+          description: result?.message || "Welcome aboard!",
         });
       }
     } catch (err:any) {
