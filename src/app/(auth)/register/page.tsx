@@ -1,12 +1,13 @@
 import RegisterForm from '@/components/auth/RegisterForm'
-import React from 'react'
+import { cookies } from 'next/headers';
+import { verifyAuth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-function registerPage() {
-  return (
-    <div>
-      <RegisterForm />
-    </div>
-  )
+export default async function registerPage() {
+  const token = cookies().get("token")?.value;
+  const user = token ? await verifyAuth(token) : null;
+
+  if (user) redirect("/");
+
+  return <RegisterForm />;
 }
-
-export default registerPage

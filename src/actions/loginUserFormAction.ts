@@ -1,109 +1,148 @@
 "use server";
 
-import aj from "@/lib/arcjet";
+import ajSignup from "@/lib/arcjet";
+// import ajSignup from "@/lib/arcjetSignup";
 import connectToDatabase from "@/lib/db";
 import User from "@/models/User";
 import { request } from "@arcjet/next";
 import bcrypt from "bcryptjs";
-import { error } from "console";
-// import { redirect } from "next/navigation";
-import { success, z } from "zod";
+import { SignJWT } from "jose";
+import { cookies } from "next/headers";
+import z from "zod";
 
 const loginFormValidation = z.object({
-  email: z.string().email({ message: "Invalid email address" }),
-  password: z
-    .string()
-    .min(8, { message: "Password must be at least 8 characters long" })
-    .max(20, { message: "Password must be at most 20 characters long" }),
+  email: z.string().email(),
+  password: z.string().min(8).max(20),
 });
 
 const loginUserFormAction = async (formData: FormData) => {
-  const toValidate = {
-    email: (formData.get("email") as string) || "",
-    password: (formData.get("password") as string) || "",
-  };
-
-  const parsed = loginFormValidation.safeParse(toValidate);
+  const parsed = loginFormValidation.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
 
   if (!parsed.success) {
-    return {
-      success: false,
-      error: parsed.error.errors.map((e) => e.message).join(", "),
-      status: 400,
-    };
+    return { success: false, error: "Invalid email or password." };
   }
 
-  const { email,password } = parsed.data;
+  const { email, password } = parsed.data;
 
-  if (!email) {
-    return {
-      success: false,
-      error: "Email is required",
-      status: 400,
-    };
-  }
+  // Arcjet anti abuse check
+  const req = await request();
+  const decision = await ajSignup.protect(req, { email });
 
-  try {
-    const req = await request();
-    const decision = await aj.protect(req, { email });
+  // ==============================
+  // 🔥 SPECIFIC ARCJET DENIED REASONS
+  // ==============================
+  if (decision.isDenied()) {
+    const reason = decision.reason;
 
-    if (decision.isDenied()) {
-      let reason = "Access denied";
+    // 1️⃣ Email-related issues
+    if (reason.isEmail()) {
+      const conclusion = decision.conclusion || [];
 
-      if (decision.conclusion.includes("DISPOSABLE")) {
-        reason = "Disposable email addresses are not allowed.";
-        console.log("Disposable email detected:", email);
-      } else if (decision.conclusion.includes("INVALID")) {
-        reason = "The email address format is invalid.";
-        console.log("Invalid email format:", email);
-      } else if (decision.conclusion.includes("NO_MX_RECORDS")) {
-        reason = "Email domain has no MX records.";
-        console.log("No MX record for:", email);
+      if (conclusion.includes("DISPOSABLE")) {
+        return { success: false, error: "Disposable email addresses are not allowed." };
       }
-      else{
-        reason = "your can access the page. please try later"
+      if (conclusion.includes("INVALID")) {
+        return { success: false, error: "Invalid email format." };
+      }
+      if (conclusion.includes("NO_MX_RECORDS")) {
+        return {
+          success: false,
+          error: "The email domain is not reachable (missing MX records).",
+        };
       }
 
+      return { success: false, error: "Invalid or suspicious email address." };
+    }
+
+    // 2️⃣ Bots (automation detected)
+    if (reason.isBot()) {
+      return { success: false, error: "Bot-like behavior detected. Access denied." };
+    }
+
+    // 3️⃣ Sensitive information
+    if (reason.isSensitiveInfo()) {
       return {
         success: false,
-        error: reason,
-        status: 403,
+        error: "Sensitive or unsafe information detected in the request.",
       };
     }
-    // connection to my database 
-    await connectToDatabase()
 
-    // git user with the same email from the database 
-    const user = await User.findOne({email: email}).select("+password") ?? true;
-    if (!user ) {
+    // 4️⃣ Shield triggered (high-risk behavior)
+    if (reason.isShield()) {
       return {
-        success:false,
-        error: "your don't have an account yet or verify your info. Get register first",
-        status:400,
-      }
+        success: false,
+        error: "Your request was blocked for security reasons.",
+      };
     }
 
-    const ispasswordMatch = bcrypt.compare(password, user.password)
-    if (!ispasswordMatch) {
+    // 5️⃣ Rate limit exceeded
+    if (reason.isRateLimit()) {
       return {
-        success:false,
-        error:"login failed",
-        status:400
-      }
+        success: false,
+        error: "Too many attempts. Please wait and try again.",
+      };
     }
-    return{
-      success:true,
-      error:"Login successful",
-      status:200,
-    }
-  } catch (err: any) {
-    console.error("Arcjet login error:", err);
-    return {
-      success: false,
-      error: "Internal server error",
-      status: 500,
-    };
+
+    // Default fallback
+    return { success: false, error: "Login blocked for security reasons." };
   }
+
+  // ==============================
+  // 🔥 Normal Login Flow
+  // ==============================
+
+  await connectToDatabase();
+  const user = await User.findOne({ email }).select("+password");
+
+  if (!user) {
+    return { success: false, error: "No account found with this email." };
+  }
+
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) {
+    return { success: false, error: "Incorrect password." };
+  }
+
+ // -------------------------
+  // 1️⃣ Create JWT Payload
+  // -------------------------
+  const payload = {
+    id: user._id.toString(),
+    email: user.email,
+    username: user.username,
+  };
+
+  // -------------------------
+  // 2️⃣ Create Secret Key
+  // -------------------------
+  const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+
+  // -------------------------
+  // 3️⃣ Generate Token (1 hour)
+  // -------------------------
+  const token = await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("1h") // 1 hour
+    .sign(secret);
+
+  // -------------------------
+  // 4️⃣ Save token to cookie
+  // -------------------------
+  cookies().set({
+    name: "token",
+    value: token,
+    httpOnly: true,
+    secure: true, // important in production
+    sameSite: "strict",
+    path: "/",
+    maxAge: 60 * 60, // 1 hour
+  });
+
+  return { success: true, message: "Login successful",status:200};
 };
 
 export default loginUserFormAction;

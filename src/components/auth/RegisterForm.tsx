@@ -55,13 +55,13 @@ export default function RegisterForm() {
         toast.error("Registration failed", {
           description: result?.error || "Something went wrong",
         });
-        reset(); // clear form
-        router.push("/login");
       } else {
         // ✅ Use result.error for failure
         toast.success("Registration successful!", {
           description: result?.message || "Welcome aboard!",
         });
+        reset(); // clear form
+        router.push("/login");
       }
     } catch (err:any) {
       console.error("Error during registration:", err);
