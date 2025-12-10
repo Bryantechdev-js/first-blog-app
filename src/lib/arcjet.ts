@@ -6,7 +6,7 @@ const ajSignup = arcjet({
     protectSignup({
       email: { mode: "LIVE", block: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"] },
       bots: { mode: "LIVE" ,allow:[]},
-      rateLimit: { mode: "LIVE", interval: "10m", max: 5 },
+      rateLimit: { mode: "LIVE", interval: "1m", max: 5 },
     }),
   ],
 });
