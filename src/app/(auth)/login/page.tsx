@@ -4,7 +4,8 @@ import { verifyAuth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
 export default async function loginPage() {
-  const token = cookies().get("token")?.value;
+  const cookiestore = await cookies()
+  const token = cookiestore.get("token")?.value;
   const user = token ? await verifyAuth(token) : null;
 
   if (user) redirect("/");

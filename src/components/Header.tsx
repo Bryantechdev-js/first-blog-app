@@ -14,7 +14,7 @@ function Header() {
     const router = useRouter();
 
     const handleEdit =()=>{
-        router.push("/create/blog");
+        router.push("/blog/create");
     }
 
     const handleLogout = async()=>{
@@ -35,7 +35,7 @@ function Header() {
         }
     }
   return (
-   <header className='max-w-full h-24 flex justify-between items-center px-3 sm:px-5'>
+   <header className='max-w-full h-20 flex justify-between items-center px-3 sm:px-5 shadow '>
     <div className="logo">
         <a href="/">
             <div className='flex gap-3 justify-center items-center'>
@@ -58,8 +58,9 @@ function Header() {
          <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Avatar className='h-8 w-8 cursor-pointer'>
+                    <AvatarImage src={"https://github.com/shadcn.png"}/>
                     <AvatarFallback>
-                        <AvatarImage src={""}/>
+                        MB
                     </AvatarFallback>
                 </Avatar>
             </DropdownMenuTrigger>
