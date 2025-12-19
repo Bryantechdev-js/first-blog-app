@@ -132,7 +132,8 @@ const loginUserFormAction = async (formData: FormData) => {
   // -------------------------
   // 4️⃣ Save token to cookie
   // -------------------------
-  cookies().set({
+  const cookiestore = await cookies()
+  cookiestore.set({
     name: "token",
     value: token,
     httpOnly: true,

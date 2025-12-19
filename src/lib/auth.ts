@@ -8,7 +8,8 @@ export async function verifyAuth(token: string) {
       token,
       new TextEncoder().encode(process.env.JWT_SECRET)
     );
-
+    console.log("user token decode: " , payload);
+    
     return {
       userId: payload.userId,
       email: payload.email,
