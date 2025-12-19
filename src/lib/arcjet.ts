@@ -1,4 +1,4 @@
-import arcjet, { protectSignup } from "@arcjet/next";
+import arcjet, { detectBot, protectSignup, shield, tokenBucket } from "@arcjet/next";
 
 const ajSignup = arcjet({
   key: process.env.ARCJET_KEY!,
@@ -12,3 +12,18 @@ const ajSignup = arcjet({
 });
 
 export default ajSignup;
+
+export const blogPostRules = arcjet({
+  key: process.env.ARCJET_KEY!,
+  characteristics: ["ip.src"],
+  rules: [
+    detectBot({
+      mode: "LIVE",
+      allow: [],
+    }),
+    shield({
+      mode: "DRY_RUN", // 🔥 MUST BE LIVE to block
+    }),
+  ],
+});
+

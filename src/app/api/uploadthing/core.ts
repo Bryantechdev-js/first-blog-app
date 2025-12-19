@@ -1,6 +1,6 @@
-import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { verifyAuth } from "@/lib/auth";
 import { cookies } from "next/headers";
+import { createUploadthing, type FileRouter } from "uploadthing/next";
 
 const f = createUploadthing();
 
@@ -10,20 +10,38 @@ export const ourFileRouter = {
     video: { maxFileSize: "32MB", maxFileCount: 3 },
   })
     .middleware(async () => {
-      const store = cookies();
-      const token = store.get("token")?.value;
-      const user = await verifyAuth(token);
+      try {
+        const cookieStore = cookies();
+        const token = cookieStore.get("token")?.value;
 
-      if (!user) throw new Error("Unauthorized");
+        if (!token) {
+          throw new Error("No auth token");
+        }
 
-      return { userId: user.userId };
+        const user = await verifyAuth(token);
+
+        if (!user) {
+          throw new Error("Unauthorized");
+        }
+
+        return {
+          userId: user.userId,
+        };
+      } catch (err) {
+        console.error("❌ Upload middleware error:", err);
+        throw new Error("Unauthorized upload");
+      }
     })
-    .onUploadComplete(({ file, metadata }) => {
+    .onUploadComplete(async ({ metadata, file }) => {
+      console.log("✅ Upload complete (server)");
+      console.log("User:", metadata.userId);
+      console.log("File URL:", file.url);
+
       return {
-        url: file.ufsUrl,
-        uploadedBy: metadata.userId,
+        url: file.url || file.ufsUrl,
+        key: file.key,
       };
     }),
-};
+} satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

@@ -4,6 +4,8 @@ import { Toaster } from 'sonner'
 import Header from './Header'
 
 function CustomLayout({children}: {children: ReactNode}) {
+  
+  
   return (
     <div>
        <Header/>

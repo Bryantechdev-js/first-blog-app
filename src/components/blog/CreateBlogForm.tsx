@@ -3,278 +3,244 @@
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import z from "zod";
+import { z } from "zod";
 import { toast } from "sonner";
 
-// UI Components
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
-import { Avatar, AvatarImage } from "../ui/avatar";
-import { PlusCircle, Loader2, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { UploadButton } from "@/utils/uploadthing";
+import { Loader2, CheckCircle } from "lucide-react";
+import BlogEditor from "./BlogEditor";
+import { useRouter } from "next/navigation";
 
-// Tiptap imports
-import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
-import Link from "@tiptap/extension-link";
-import Image from "@tiptap/extension-image";
-import Underline from "@tiptap/extension-underline";
-import { TextStyle } from "@tiptap/extension-text-style";
-import { Color } from "@tiptap/extension-color";
-import TextAlign from "@tiptap/extension-text-align";
-import Heading from "@tiptap/extension-heading";
-import BulletList from "@tiptap/extension-bullet-list";
-import OrderedList from "@tiptap/extension-ordered-list";
-import ListItem from "@tiptap/extension-list-item";
-import Blockquote from "@tiptap/extension-blockquote";
-import CodeBlock from "@tiptap/extension-code-block";
-
-// ---------------- Validation schema ----------------
+/* ---------------- Schema ---------------- */
 const blogSchema = z.object({
-  title: z.string().min(10),
-  content: z.string().min(20),
-  categories: z.string().min(1),
+  title: z.string().min(10, "Title must be at least 10 characters"),
+  category: z.string().min(1, "Select a category"),
+  content: z.string().min(20, "Content must be at least 20 characters"),
   media: z.array(z.string()).optional(),
 });
 
-type BlogFormType = z.infer<typeof blogSchema>;
+type BlogFormData = z.infer<typeof blogSchema>;
 
-const BLOG_CATEGORIES = ["Web Development", "Technology", "Programming", "Data Science", "Design", "AI"];
+const CATEGORIES = [
+  "Web Development",
+  "Technology",
+  "Programming",
+  "Design",
+  "AI",
+];
 
-// ---------------- Media Preview ----------------
-function PreviewItem({ url }: { url: string }) {
-  const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url);
-  return (
-    <div className="w-28 h-20 rounded-md overflow-hidden bg-zinc-100 flex items-center justify-center">
-      {isVideo ? (
-        <video src={url} className="object-cover w-full h-full" muted playsInline />
-      ) : (
-        <img src={url} className="object-cover w-full h-full" alt="preview" />
-      )}
-    </div>
-  );
-}
-
-// ---------------- Editor Toolbar ----------------
-function EditorToolbar({ editor }: { editor: any }) {
-  if (!editor) return null;
-
-  return (
-    <div className="flex flex-wrap gap-2 mb-2">
-      <Button size="sm" onClick={() => editor.chain().focus().toggleBold().run()}>B</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().toggleItalic().run()}>I</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().toggleUnderline().run()}>U</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().toggleStrike().run()}>S</Button>
-
-      <Button size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>H1</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>H2</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>H3</Button>
-
-      <Button size="sm" onClick={() => editor.chain().focus().toggleBulletList().run()}>• List</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()}>1. List</Button>
-
-      <Button size="sm" onClick={() => editor.chain().focus().toggleBlockquote().run()}>❝</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().toggleCodeBlock().run()}>{"</>"}</Button>
-
-      <Button
-        size="sm"
-        onClick={() => {
-          const url = prompt("Enter URL");
-          if (url) editor.chain().focus().setLink({ href: url }).run();
-        }}
-      >
-        Link
-      </Button>
-
-      <input
-        type="color"
-        className="w-8 h-8 p-0 border rounded"
-        onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-      />
-
-      <Button size="sm" onClick={() => editor.chain().focus().setTextAlign("left").run()}>Left</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().setTextAlign("center").run()}>Center</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().setTextAlign("right").run()}>Right</Button>
-      <Button size="sm" onClick={() => editor.chain().focus().setTextAlign("justify").run()}>Justify</Button>
-
-      <Button size="sm" onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>Clear</Button>
-
-      <Button
-        size="sm"
-        onClick={() => {
-          const url = prompt("Enter image URL");
-          if (url) editor.chain().focus().setImage({ src: url }).run();
-        }}
-      >
-        Img
-      </Button>
-    </div>
-  );
-}
-
-// ---------------- Main Component ----------------
 export default function CreateBlogForm({ user }: { user?: any }) {
-  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  const { handleSubmit, control, setValue, formState: { errors } } = useForm<BlogFormType>({
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<BlogFormData>({
     resolver: zodResolver(blogSchema),
-    defaultValues: { title: "", content: "", categories: "", media: [] },
-  });
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Placeholder.configure({ placeholder: "Write your article..." }),
-      Underline,
-      Link,
-      Image,
-      TextStyle,
-      Color,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Heading.configure({ levels: [1, 2, 3] }),
-      BulletList,
-      OrderedList,
-      ListItem,
-      Blockquote,
-      CodeBlock,
-    ],
-    content: "",
-    onUpdate({ editor }) {
-      setValue("content", editor.getHTML(), { shouldValidate: true });
+    defaultValues: {
+      title: "",
+      category: "",
+      content: "",
+      media: [],
     },
-    editorProps: { attributes: { class: "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none" } },
-    immediatelyRender: false, // <<< Fix SSR hydration
   });
 
-  const handleUploadBegin = () => {
-    setLoading(true);
-    toast("Uploading media...");
-  };
+  const uploadedMedia = watch("media") ?? [];
 
-  const handleClientUploadComplete = (files: { url: string }[]) => {
-    const urls = files.map(f => f.url);
-    setUploadedUrls(prev => {
-      const next = [...prev, ...urls];
-      setValue("media", next, { shouldValidate: true });
-      return next;
-    });
-    setLoading(false);
-    toast.success("Upload completed!");
-  };
+  //creating the router to navigate pages
+  const router = useRouter();
 
-  const handleUploadError = (err?: Error) => {
-    setLoading(false);
-    toast.error("Upload failed. Try again.");
-    console.error(err);
-  };
-
-  const onSubmit = (data: BlogFormType) => {
-    setFormSubmitting(true);
+  /* ---------------- Submit ---------------- */
+  const onSubmit = async (data: BlogFormData) => {
     try {
-      console.log("Blog Data:", data);
-      toast.success("Blog created successfully!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Something went wrong while saving the blog.");
-    } finally {
-      setFormSubmitting(false);
+      toast.loading("Publishing post...", { id: "publish" });
+
+      const res = await fetch("/api/create-blog-post", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-arcjet-suspicious": "true", // ✅ STRING
+        },
+        body: JSON.stringify(data),
+      });
+
+
+      const result = await res.json();
+
+      toast.dismiss("publish");
+
+      if (!result.success) {
+        toast.error(result.error || "Failed to publish post");
+        return;
+      }
+
+      toast.success(result.message || "Post published successfully 🚀");
+      router.push("/")
+    } catch (error) {
+      toast.dismiss("publish");
+      toast.error("Something went wrong");
+      console.error(error);
     }
   };
 
-  const userName = user?.userName ?? user?.email ?? "Guest";
-
   return (
-    <div className="max-w-3xl mx-auto px-6 lg:px-8 mt-10">
-      <header className="flex justify-between items-center mb-6">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="max-w-3xl mx-auto mt-12 space-y-8"
+    >
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src="https://github.com/shadcn.png" alt="avatar" />
+          <Avatar className="shadow">
+            <AvatarImage src="https://github.com/shadcn.png" />
           </Avatar>
-          <div>
-            <p className="text-lg font-semibold">{userName}</p>
-            <p className="text-sm text-zinc-500">Share your story with the world</p>
-          </div>
+          <span className="font-medium">{user?.email ?? "Guest"}</span>
         </div>
-        <Button onClick={handleSubmit(onSubmit)} disabled={formSubmitting || loading}>
-          {formSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Publish"}
+
+        <Button type="submit" disabled={uploading}>
+          {uploading ? "Uploading…" : "Publish"}
         </Button>
-      </header>
-
-      <div className="bg-white dark:bg-zinc-900 shadow-md rounded-xl border border-zinc-100 dark:border-zinc-800 p-6 transition-shadow hover:shadow-xl duration-300">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Title */}
-          <div>
-            <Controller
-              name="title"
-              control={control}
-              render={({ field }) => <Input {...field} placeholder="Catchy title for your post" />}
-            />
-            {errors.title && <p className="text-sm text-red-600 mt-2">{errors.title.message}</p>}
-          </div>
-
-          {/* Category */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-            <div className="md:col-span-2">
-              <Controller
-                name="categories"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BLOG_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.categories && <p className="text-sm text-red-600 mt-2">{errors.categories.message}</p>}
-            </div>
-
-            {/* Upload */}
-            <div className="flex flex-col items-center gap-3">
-              <UploadButton
-                endpoint="mediaUploader"
-                onUploadBegin={handleUploadBegin}
-                onClientUploadComplete={handleClientUploadComplete}
-                onUploadError={handleUploadError}
-                appearance={{ button: "bg-black text-white px-4 py-2 rounded-md hover:bg-zinc-800 transition" }}
-                content={{ button: <div className="flex items-center gap-2"><PlusCircle className="h-4 w-4" /> Upload media</div> }}
-                className="w-24"
-              />
-              {loading && <Loader2 className="animate-spin h-6 w-6 text-zinc-500 mt-2" />}
-              {!loading && uploadedUrls.length > 0 && <Check className="h-6 w-6 text-emerald-500 mt-2" />}
-            </div>
-          </div>
-
-          {/* Editor */}
-          <EditorToolbar editor={editor} />
-          <div className="border rounded-md p-2">
-            {editor ? <EditorContent editor={editor} /> : <p>Loading editor...</p>}
-          </div>
-          {errors.content && <p className="text-sm text-red-600 mt-2">{errors.content.message}</p>}
-
-          {/* Media Preview */}
-          {uploadedUrls.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium mb-3">Media previews</h4>
-              <div className="flex gap-3 flex-wrap">
-                {uploadedUrls.map((u, i) => <PreviewItem key={i} url={u} />)}
-              </div>
-            </div>
-          )}
-
-          {/* Submit */}
-          <Button type="submit" className="w-full py-3 text-sm font-medium" disabled={formSubmitting || loading}>
-            {formSubmitting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : "Publish Post"}
-          </Button>
-        </form>
       </div>
-    </div>
+
+      {/* Title */}
+      <Controller
+        name="title"
+        control={control}
+        render={({ field }) => (
+          <Input
+            {...field}
+            placeholder="Blog title"
+            className="text-3xl font-bold border-none px-0 focus-visible:ring-0"
+          />
+        )}
+      />
+      {errors.title && (
+        <p className="text-red-500">{errors.title.message}</p>
+      )}
+
+      {/* Category */}
+      <Controller
+        name="category"
+        control={control}
+        render={({ field }) => (
+          <Select value={field.value} onValueChange={field.onChange}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      />
+      {errors.category && (
+        <p className="text-red-500">{errors.category.message}</p>
+      )}
+
+      {/* Editor */}
+      <Controller
+        name="content"
+        control={control}
+        render={({ field }) => (
+          <BlogEditor value={field.value} onChange={field.onChange} />
+        )}
+      />
+      {errors.content && (
+        <p className="text-red-500">{errors.content.message}</p>
+      )}
+
+      {/* Upload */}
+      <div className="border rounded-lg p-4 space-y-4">
+        <UploadButton
+          endpoint="mediaUploader"
+          onUploadBegin={() => {
+            setUploading(true);
+            setUploadProgress(0);
+            toast.loading("Uploading media…", { id: "upload" });
+          }}
+          onUploadProgress={(progress) => {
+            if(progress === 100){
+              setUploading(false);
+              toast.success("file uploaded successfully 😊");
+              setValue("media",["https://dtamrt7d9d.ufs.sh/f/g9avUSpEIGPyW018Dh2cKLtuYdXfEPlwi41R0hjb38SVGBOF"]);
+            }
+            setUploadProgress(progress);
+          }}
+          onClientUploadComplete={(res) => {
+            setUploading(false);
+            toast.dismiss("upload");
+
+            if (!res?.length) {
+              toast.error("Upload failed");
+              return;
+            }
+
+            const urls = res.map(
+              (file) => `https://utfs.io/f/${file.key}`
+            );
+
+            setValue("media", [...uploadedMedia, ...urls], {
+              shouldValidate: true,
+            });
+
+            toast.success(`${urls.length} file(s) uploaded`);
+          }}
+          onUploadError={(err) => {
+            setUploading(false);
+            toast.dismiss("upload");
+            toast.error(err.message);
+          }}
+        />
+
+        {uploading && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-zinc-500">
+              <Loader2 className="animate-spin h-4 w-4" />
+              Uploading… {uploadProgress}%
+            </div>
+            <div className="w-full bg-zinc-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {!uploading && uploadedMedia.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-emerald-600 text-sm">
+              <CheckCircle className="h-4 w-4" />
+              {uploadedMedia.length} media uploaded
+            </div>
+            <div className="text-xs space-y-1">
+              {uploadedMedia.map((url, i) => (
+                <p key={i} className="truncate bg-zinc-100 p-1 rounded">
+                  {url}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </form>
   );
 }
