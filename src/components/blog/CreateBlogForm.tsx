@@ -26,12 +26,12 @@ const blogSchema = z.object({
   title: z.string().min(10, "Title must be at least 10 characters"),
   category: z.string().min(1, "Select a category"),
   content: z.string().min(20, "Content must be at least 20 characters"),
-  media: z.array(z.string()).optional(),
+  coverImage: z.array(z.string()).optional(),
 });
 
 type BlogFormData = z.infer<typeof blogSchema>;
 
-const CATEGORIES = [
+export const CATEGORIES = [
   "Web Development",
   "Technology",
   "Programming",
@@ -55,7 +55,7 @@ export default function CreateBlogForm({ user }: { user?: any }) {
       title: "",
       category: "",
       content: "",
-      media: [],
+      coverImage: [],
     },
   });
 
@@ -180,7 +180,7 @@ export default function CreateBlogForm({ user }: { user?: any }) {
             if(progress === 100){
               setUploading(false);
               toast.success("file uploaded successfully 😊");
-              setValue("media",["https://dtamrt7d9d.ufs.sh/f/g9avUSpEIGPyW018Dh2cKLtuYdXfEPlwi41R0hjb38SVGBOF"]);
+              setValue("coverImage",["https://dtamrt7d9d.ufs.sh/f/g9avUSpEIGPyW018Dh2cKLtuYdXfEPlwi41R0hjb38SVGBOF"]);
             }
             setUploadProgress(progress);
           }}
@@ -197,9 +197,7 @@ export default function CreateBlogForm({ user }: { user?: any }) {
               (file) => `https://utfs.io/f/${file.key}`
             );
 
-            setValue("media", [...uploadedMedia, ...urls], {
-              shouldValidate: true,
-            });
+            setValue("coverImage", "https://dtamrt7d9d.ufs.sh/f/g9avUSpEIGPyBvX4Odene6Xm4zrYMCFjhGRwIEb3aBtok7W1");
 
             toast.success(`${urls.length} file(s) uploaded`);
           }}

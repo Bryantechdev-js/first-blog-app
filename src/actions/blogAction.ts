@@ -18,8 +18,8 @@ const blogSchema = z.object({
 
 export async function createNewBlog(data: any, headers: Headers) {
   /* ---------------- Auth ---------------- */
-  const cookiestore = await cookies()
-  const token = cookiestore.get("token")?.value as string ;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
   
   const user = await verifyAuth(token);
   console.log("user token:" + user);
@@ -74,7 +74,7 @@ export async function createNewBlog(data: any, headers: Headers) {
         content,
         category,
         coverImage: media?.[0] ?? null,
-        author: user?.userName ?? user?.email,
+        author: user.id, // ✅ Use ObjectId, not username/email
       });
       return { success: true, post,message:"blog created successfully", status:200 };
   } catch(err){

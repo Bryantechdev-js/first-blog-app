@@ -1,45 +1,124 @@
 {
   "version": "0.2.0",
   "configurations": [
+
+    // =========================
+    // 1️⃣ Node.js: Debug a plain Node.js app
+    // =========================
     {
-      "name": "Next.js: debug server-side",
+      "name": "Debug Node.js App",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/index.js",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "NODE_OPTIONS": "--inspect"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "openOnSessionStart",
+      "trace": true
+    },
+
+    // =========================
+    // 2️⃣ Attach to running Node.js process
+    // =========================
+    {
+      "name": "Attach to Node Process",
+      "type": "node",
+      "request": "attach",
+      "processId": "${command:PickProcess}",
+      "restart": true,
+      "skipFiles": ["<node_internals>/**"],
+      "trace": true
+    },
+
+    // =========================
+    // 3️⃣ Next.js Server-Side Debug
+    // =========================
+    {
+      "name": "Next.js: Debug Server-Side",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run dev -- --inspect"
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "NODE_OPTIONS": "--inspect"
+      },
+      "trace": true
     },
+
+    // =========================
+    // 4️⃣ Next.js Client-Side Debug in Chrome
+    // =========================
     {
-      "name": "Next.js: debug client-side",
-      "type": "chrome",
-      "request": "launch",
-      "url": "http://localhost:3000"
-    },
-    {
-      "name": "Next.js: debug client-side (Firefox)",
+      "name": "Next.js: Debug Client-Side (Chrome)",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:3000",
-      "reAttach": true,
-      "pathMappings": [
-        {
-          "url": "webpack://_N_E",
-          "path": "${workspaceFolder}"
-        }
-      ]
+      "webRoot": "${workspaceFolder}/src",
+      "trace": true
     },
+
+    // =========================
+    // 5️⃣ Fullstack Next.js Debug (Server + Client)
+    // =========================
     {
-      "name": "Next.js: debug full stack",
+      "name": "Next.js: Debug Fullstack",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/next/dist/bin/next",
-      "runtimeArgs": ["--inspect"],
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": [],
       "skipFiles": ["<node_internals>/**"],
       "serverReadyAction": {
         "action": "debugWithChrome",
-        "killOnServerStop": true,
         "pattern": "- Local:.+(https?://.+)",
         "uriFormat": "%s",
-        "webRoot": "${workspaceFolder}"
-      }
+        "killOnServerStop": true
+      },
+      "env": {
+        "NODE_OPTIONS": "--inspect"
+      },
+      "trace": true,
+       "sourceMaps": true
+    },
+
+    // =========================
+    // 6️⃣ NestJS Debug
+    // =========================
+    {
+      "name": "Debug NestJS App",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/dist/main.js",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+      "env": {
+        "NODE_OPTIONS": "--inspect"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "openOnSessionStart",
+      "trace": true
+    },
+
+    // =========================
+    // 7️⃣ Express / Any Node Framework Debug
+    // =========================
+    {
+      "name": "Debug Express / Custom Node App",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/server.js",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "NODE_OPTIONS": "--inspect"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal",
+      "trace": true
     }
+
   ]
 }
