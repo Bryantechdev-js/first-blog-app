@@ -6,7 +6,7 @@ import { success } from "zod";
 export async function logoutUserAction() {
     try{
         const cookiestore = await cookies();
-        cookiestore.delete("token",{path:"/"});
+        cookiestore.delete("token");
         return {
             success:true,
             error:"logout successful",

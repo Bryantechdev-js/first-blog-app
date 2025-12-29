@@ -13,7 +13,7 @@ const arcjetMW = createMiddleware(ajGlobal);
 export async function middleware(request: any) {
   // 1. Run Arcjet global rate-limit 
   const arcjetResponse = await arcjetMW(request);
-  let response = NextResponse.next();
+  const response = NextResponse.next();
 
   if (arcjetResponse?.headers) {
     arcjetResponse.headers.forEach((value, key) => {
@@ -34,7 +34,7 @@ export async function middleware(request: any) {
 
   if (!isPublic) {
     const token = request.cookies.get("token")?.value;
-    const user = token ? await verifyAuth(token) : null;
+    const user = token && await verifyAuth(token);
 
     if (!user) {
       const loginUrl = new URL("/login", request.url);

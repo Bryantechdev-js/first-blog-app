@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 export const getBlogPostAction = async () => {
   try {
     /* ---------- AUTH ---------- */
-    const token = cookies().get("token")?.value;
+    const token =( await cookies()).get("token")?.value as string;
     const user = await verifyAuth(token);
 
     if (!user) {
@@ -19,9 +19,7 @@ export const getBlogPostAction = async () => {
 
     /* ---------- ARCJET ---------- */
     const req = await request();
-    const decision = await blogPostRules.protect(req, {
-      rateLimit: { requested: 1 },
-    });
+    const decision = await blogPostRules.protect(req);
 
     if (decision.isDenied()) {
       return {
@@ -34,15 +32,26 @@ export const getBlogPostAction = async () => {
     /* ---------- DB ---------- */
     await connectToDatabase();
 
+    // First, let's fix any posts with string authors
+    await BlogPost.updateMany(
+      { author: { $type: "string" } },
+      { $unset: { author: 1 } }
+    );
+
     const posts = await BlogPost.find({})
+      .populate({
+        path: "author",
+        select: "username",
+        match: { _id: { $exists: true } }
+      })
       .sort({ createdAt: -1 })
       .lean();
 
     const serializedPosts = posts.map((post) => ({
       _id: post._id.toString(),
       title: post.title,
-      media: post.media,
-      author: post.author, // string
+      coverImage: post.coverImage,
+      author: post.author?.username ?? "Unknown Author",
       category: post.category,
       createdAt: post.createdAt.toISOString(),
     }));
@@ -54,7 +63,7 @@ export const getBlogPostAction = async () => {
       posts: serializedPosts,
     };
 
-  } catch (error) {
+  } catch (error:unknown) {
     console.error("GET BLOG ERROR:", error);
     return {
       success: false,
